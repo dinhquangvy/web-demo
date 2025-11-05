@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Kiểm: Làm Chủ AI</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        /* --- Cài đặt Chung --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background: linear-gradient(to right, #f0f8ff, #e6f0ff);
+            color: #333;
+            line-height: 1.6;
+            -webkit-overflow-scrolling: touch; 
+        }
+        .page-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 24px 30px;
+        }
+
+        /* --- Cột Checklist (Bên trái) --- */
+        .checklist-container h1 {
+            font-size: 2em;
+            margin-top: 0;
+            color: #111;
+        }
+        .checklist-container .subtitle {
+            font-size: 0.95em;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .section h2 {
+            font-size: 1.3em;
+            color: #0056b3;
+            margin-bottom: 15px;
+            transition: color 0.2s ease;
+        }
+        .section h2:hover {
+            color: #003a75; 
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            margin: 0 -8px 12px -8px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .checklist-item:hover {
+            background-color: #f4f9ff; 
+            transform: scale(1.02);
+        }
+        
+        .checklist-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            accent-color: #0056b3;
+            cursor: pointer;
+        }
+        .checklist-item label {
+            font-size: 1em;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        /* --- Cột Kết quả (Bên phải) --- */
+        .results-container h2 {
+            font-size: 1.3em;
+            margin-top: 0;
+            color: #111;
+        }
+        .results-card {
+            position: sticky; 
+            top: 24px;
+        }
+
+        /* Box phản hồi chính */
+        .feedback-message {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 1.05em;
+            font-weight: 500;
+            border-left: 5px solid;
+        }
+        .feedback-message .icon {
+            font-size: 1.3em;
+            margin-right: 12px;
+            margin-top: -2px;
+        }
+        .feedback-message.default {
+            border-color: #aaa;
+            background-color: #f8f8f8;
+        }
+        .feedback-message.improve {
+            border-color: #d9534f;
+            background-color: #fdf7f7;
+            color: #a94442;
+        }
+        .feedback-message.good {
+            border-color: #f0ad4e;
+            background-color: #fefbf5;
+            color: #8a6d3b;
+        }
+        .feedback-message.excellent {
+            border-color: #5cb85c;
+            background-color: #f7fcf7;
+            color: #3c763d;
+            animation: pulse-animation 2s infinite;
+        }
+
+        /* Thẻ tag tiến trình */
+        .section-progress-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .progress-tag {
+            font-size: 0.85em;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 15px;
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        .progress-tag.completed {
+            background-color: #e7f3ff;
+            color: #0056b3;
+        }
+        .progress-tag .fraction {
+            margin-left: 5px;
+            opacity: 0.7;
+        }
+
+        /* Gợi ý cải thiện */
+        .suggestions-box {
+            margin-bottom: 20px;
+        }
+        .suggestions-box h3 {
+            font-size: 1em;
+            color: #111;
+            margin: 0 0 8px 0;
+        }
+        .suggestions-box p {
+            font-size: 0.9em;
+            color: #555;
+            margin: 0;
+        }
+
+        /* Nút chức năng */
+        .button-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap; 
+            gap: 10px;
+        }
+        .button-group button {
+            padding: 9px 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            background-color: #fff;
+            color: #333;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .button-group button:hover {
+            background-color: #f8f8f8;
+        }
+        .button-group button#copyButton {
+            background-color: #f8f9fa;
+        }
+        .button-group button#resetButton {
+            background-color: #f8f9fa;
+        }
+
+        /* Mini Tình huống */
+        .mini-case {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #f39c12;
+            background-color: #fffaf0;
+        }
+        .mini-case h3 {
+            margin: 0 0 10px 0;
+            color: #111;
+            font-size: 1.1em;
+        }
+        .mini-case p {
+            font-size: 0.95em;
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .mini-case ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 0.95em;
+            color: #333;
+        }
+        
+        /* CSS cho Thanh Tiến độ */
+        .progress-section {
+            margin-bottom: 20px;
+        }
+        .progress-track {
+            width: 100%;
+            height: 12px;
+            background-color: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%; 
+            height: 100%;
+            background: linear-gradient(to right, #007bff, #5cb85c, #f0ad4e);
+            border-radius: 6px;
+            transition: width 0.4s ease;
+        }
+        .progress-display {
+            margin-top: 10px;
+            display: flex;
+            align-items: baseline;
+        }
+        .progress-percentage {
+            font-size: 2.8em; 
+            font-weight: 700;
+            color: #111;
+            line-height: 1.1;
+        }
+        .progress-count {
+            font-size: 1em;
+            font-weight: 500;
+            color: #555;
+            margin-left: 8px;
+        }
+        
+        /* CSS cho Nút Xuất File */
+        .button-group button#exportButton {
+            background-color: #0056b3;
+            color: #fff;
+            border-color: #0056b3;
+        }
+        .button-group button#exportButton:hover {
+            background-color: #004494;
+        }
+        .button-group button#exportButton:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        
+        /* CSS cho Hiệu ứng thú vị */
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(92, 184, 92, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(92, 184, 92, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(92, 184, 92, 0); }
+        }
+
+        .reward-box {
+            margin-top: 20px;
+            padding: 15px 20px;
+            background: linear-gradient(to right, #fffaf0, #fdf6e3);
+            border: 2px dashed #f39c12;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .reward-box h3 {
+            margin: 0 0 5px 0;
+            color: #d9534f;
+            font-size: 1.2em;
+        }
+        .reward-box p {
+            margin: 0;
+            font-size: 0.95em;
+            color: #333;
+        }
+
+        /* Responsive (Sửa lỗi di động) */
+        @media (max-width: 900px) { 
+            .page-container {
+                grid-template-columns: 1fr;
+            }
+            .results-container {
+                order: -1;
+            }
+            .results-card {
+                position: static;
+            }
+            body {
+                padding: 16px;
+            }
+        }
+        
+        /* === PHẦN MỚI THÊM: CSS DỌN DẸP KHI XUẤT PDF === */
+        /* Thêm lớp này vào body để tạm thời tắt các hiệu ứng */
+        body.is-exporting-pdf .results-card {
+            position: static !important; /* Quan trọng nhất: Tắt sticky */
+            box-shadow: none !important; /* Tắt đổ bóng */
+        }
+        
+        body.is-exporting-pdf .checklist-item {
+             transform: none !important; /* Tắt hiệu ứng pop */
+             background-color: transparent !important;
+        }
+        
+        body.is-exporting-pdf .feedback-message.excellent {
+            animation: none !important; /* Tắt hiệu ứng pulse */
+            box-shadow: none !important;
+        }
+        /* === KẾT THÚC BỔ SUNG === */
+
+    </style>
+</head>
+<body>
+
+    <div class="page-container">
+        
+        <div class="checklist-container card">
+            <h1>Bảng Kiểm: Làm Chủ AI Trong Học Tập</h1>
+            <p class="subtitle">Chia theo 5 nhóm: Cá nhân hóa, Mục đích, Minh bạch, Kiểm chứng & Đạo đức, Phản tư.</p>
+            
+            <form id="aiChecklistForm">
+                
+                <div class="section" id="section-1" data-section-name="Cá nhân hóa">
+                    <h2>1. Cá nhân hóa và phát triển năng lực tự học</h2>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q1_1" name="q1_1">
+                        <label for="q1_1">Tôi dùng AI để xây dựng lộ trình học tập cá nhân.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q1_2" name="q1_2">
+                        <label for="q1_2">Tôi ghi chú và tổng hợp lại kiến thức sau khi làm việc với AI, thay vì chỉ lưu trữ phản hồi.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q1_3" name="q1_3">
+                        <label for="q1_3">Tôi nhận thấy năng lực tự học của mình được cải thiện nhờ biết cách sử dụng AI chủ động, có định hướng.</label>
+                    </div>
+                </div>
+
+                <div class="section" id="section-2" data-section-name="Mục đích">
+                    <h2>2. Mục đích sử dụng</h2>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q2_1" name="q2_1">
+                        <label for="q2_1">Tôi chỉ dùng AI để hỗ trợ hiểu bài, tra cứu hoặc luyện tập.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q2_2" name="q2_2">
+                        <label for="q2_2">Tôi đã xác định rõ mục tiêu học tập trước khi sử dụng AI.</label>
+                    </div>
+                    
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q2_3" name="q2_3">
+                        <label for="q2_3">Tôi không dùng AI để làm bài tập hộ hoặc gian lận thi cử.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q2_4" name="q2_4">
+                        <label for="q2_4">Tôi sử dụng AI để khám phá các chủ đề liên quan, mở rộng kiến thức ngoài giáo trình.</label>
+                    </div>
+                </div>
+
+                <div class="section" id="section-3" data-section-name="Minh bạch">
+                    <h2>3. Minh bạch trong câu lệnh (Prompt)</h2>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q3_1" name="q3_1">
+                        <label for="q3_1">Tôi cung cấp đầy đủ bối cảnh và thông tin nền cho AI.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q3_2" name="q3_2">
+                        <label for="q3_2">Tôi định rõ vai trò (persona) cho AI (ví dụ: "giả làm chuyên gia", "giảng viên").</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q3_3" name="q3_3">
+                        <label for="q3_3">Tôi chỉ rõ định dạng đầu ra mong muốn (ví dụ: gạch đầu dòng, bảng, tóm tắt).</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q3_4" name="q3_4">
+                        <label for="q3_4">Tôi yêu cầu AI giải thích từng bước (step-by-step) để hiểu tư duy của nó.</label>
+                    </div>
+                </div>
+
+                <div class="section" id="section-4" data-section-name="Kiểm chứng & Đạo đức">
+                    <h2>4. Kiểm chứng và đạo đức học thuật</h2>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q4_1" name="q4_1">
+                        <label for="q4_1">Tôi kiểm chứng lại thông tin do AI cung cấp bằng ít nhất một nguồn đáng tin cậy khác.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q4_2" name="q4_2">
+                        <label for="q4_2">Tôi trích dẫn rõ ràng nội dung, ý tưởng hoặc đoạn văn từ AI.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q4_3" name="q4_3">
+                        <label for="q4_3">Tôi đã đảm bảo rằng nội dung do AI tạo ra (nếu có) không bị trình bày như là nghiên cứu hoàn toàn của tôi.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q4_4" name="q4_4">
+                        <label for="q4_4">Tôi không sao chép nguyên văn phản hồi của AI để nộp như sản phẩm học tập của mình.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q4_5" name="q4_5">
+                        <label for="q4_5">Tôi luôn đọc kỹ câu trả lời của AI để phát hiện lỗi sai logic hoặc kiến thức.</label>
+                    </div>
+                </div>
+
+                <div class="section" id="section-5" data-section-name="Phản tư">
+                    <h2>5. Phản tư và Cải tiến</h2>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q5_1" name="q5_1">
+                        <label for="q5_1">Tôi chỉnh sửa (iterate) câu lệnh nhiều lần nếu AI chưa hiểu đúng ý.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q5_2" name="q5_2">
+                        <label for="q5_2">Tôi phân tích phản hồi của AI để tìm ra "lỗ hổng" kiến thức của bản thân.</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="q5_3" name="q5_3">
+                        <label for="q5_3">Tôi lưu lại các câu lệnh (prompts) hiệu quả để tái sử dụng và cải tiến.</label>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        
+        <div class="results-container">
+            <div class="results-card card">
+                
+                <h2>Tổng kết & Gợi ý</h2>
+
+                <div class="progress-section">
+                    <div class="progress-track">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-display">
+                        <span class="progress-percentage" id="progressPercentage">0%</span>
+                        <span class="progress-count" id="progressCount">(0 / 19 mục)</span>
+                    </div>
+                </div>
+
+                <div class="feedback-message default" id="feedbackMessage">
+                    <span class="icon" id="feedbackIcon">⏳</span>
+                    <span id="feedbackText">Hãy bắt đầu chọn các mục để xem kết quả...</span>
+                </div>
+
+                <div class="section-progress-container" id="sectionProgressContainer">
+                    </div>
+
+                <div class="suggestions-box" id="suggestionsBox">
+                    <h3>Gợi ý cải thiện:</h3>
+                    <p id="suggestionText">Hãy chọn ít nhất một mục để nhận gợi ý.</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" id="copyButton">Copy Kết quả</button>
+                    <button type="button" id="resetButton">Làm lại</button>
+                    <button type="button" id="exportButton">Xuất PDF</button>
+                </div>
+
+                <div class="mini-case">
+                    <h3>💡 Tình huống Mini</h3>
+                    <p><strong>Học viên A:</strong> "Mình dùng AI viết luận văn hộ."</p>
+                    <p><strong>Học viên B (Làm chủ AI):</strong> "Mình dùng AI để:
+                        <ul>
+                            <li>Brainstorm 3 dàn ý khác nhau.</li>
+                            <li>Tìm 5 nguồn tài liệu học thuật uy tín về chủ đề.</li>
+                            <li>Kiểm tra lại ngữ pháp và cách hành văn của bài luận."</li>
+                        </ul>
+                    </p>
+                </div>
+                
+                <div class="reward-box" id="reward-100" style="display: none;">
+                    <h3>🏆 Bạn là Bậc Thầy AI!</h3>
+                    <p>Bạn đã hoàn thành 100% bảng kiểm. Hãy chia sẻ thành tích này!</p>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            const { jsPDF } = window.jspdf;
+            
+            const form = document.getElementById('aiChecklistForm');
+            const sections = form.querySelectorAll('.section');
+            const allCheckboxes = form.querySelectorAll('input[type="checkbox"]');
+            const totalItems = allCheckboxes.length; 
+
+            const progressBar = document.getElementById('progressBar');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressCount = document.getElementById('progressCount');
+            const feedbackMessage = document.getElementById('feedbackMessage');
+            const feedbackIcon = document.getElementById('feedbackIcon');
+            const feedbackText = document.getElementById('feedbackText');
+            const sectionProgressContainer = document.getElementById('sectionProgressContainer');
+            const suggestionsBox = document.getElementById('suggestionsBox');
+            const suggestionText = document.getElementById('suggestionText');
+            
+            const resetButton = document.getElementById('resetButton');
+            const copyButton = document.getElementById('copyButton');
+            const exportButton = document.getElementById('exportButton');
+            
+            const rewardBox = document.getElementById('reward-100');
+            
+            let totalChecked = 0; 
+
+            const suggestions = {
+                default: "Hãy chọn ít nhất một mục để nhận gợi ý.",
+                'section-1': "Bạn đang làm tốt phần cá nhân hóa. Hãy thử dùng AI để tạo các câu hỏi ôn tập dựa trên ghi chú của bạn.",
+                'section-2': "Mục đích rõ ràng là chìá khóa. Hãy luôn bắt đầu câu lệnh với mục tiêu (ví dụ: 'So sánh', 'Phân tích', 'Tóm tắt').",
+                'section-3': "Kỹ năng prompt rất tốt! Thử thách thêm bằng cách yêu cầu AI tranh luận ngược lại với quan điểm của bạn.",
+                'section-4': "Tuyệt vời! Luôn giữ tư duy phản biện. Hãy thử hỏi AI 'Nguồn của thông tin này là gì?' để kiểm tra.",
+                'section-5': "Phản tư là cốt lõi của việc học. Hãy lưu lại một cuộc trò chuyện AI thất bại và phân tích tại sao nó không hiệu quả."
+            };
+
+            // Hàm updateResults (Giữ nguyên)
+            function updateResults() {
+                totalChecked = 0; 
+                let sectionsComplete = [];
+                let firstUncheckedSection = null;
+
+                sectionProgressContainer.innerHTML = ''; 
+
+                sections.forEach(section => {
+                    const sectionCheckboxes = section.querySelectorAll('input[type="checkbox"]');
+                    const sectionTotal = sectionCheckboxes.length;
+                    let sectionChecked = 0;
+
+                    sectionCheckboxes.forEach(cb => {
+                        if (cb.checked) {
+                            sectionChecked++;
+                        }
+                    });
+
+                    totalChecked += sectionChecked;
+
+                    const sectionName = section.dataset.sectionName;
+                    const tag = document.createElement('span');
+                    tag.classList.add('progress-tag');
+                    if (sectionChecked === sectionTotal) {
+                        tag.classList.add('completed');
+                        sectionsComplete.push(section.id);
+                    } else {
+                        if (!firstUncheckedSection) {
+                            firstUncheckedSection = section.id;
+                        }
+                    }
+                    tag.innerHTML = `${sectionName} <span class="fraction">(${sectionChecked}/${sectionTotal})</span>`;
+                    sectionProgressContainer.appendChild(tag);
+                });
+
+                const percentage = totalItems > 0 ? (totalChecked / totalItems) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+                progressPercentage.textContent = `${Math.round(percentage)}%`;
+                progressCount.textContent = `(${totalChecked} / ${totalItems} mục)`; 
+
+                let fClass = 'default';
+                let fIcon = '⏳';
+                let fText = 'Hãy bắt đầu chọn các mục để xem kết quả...';
+
+                if (totalChecked > 0) {
+                    if (percentage < 40) {
+                        fClass = 'improve';
+                        fIcon = '😟';
+                        fText = '**Cần cải thiện** — Bạn mới bắt đầu. Hãy khám phá thêm các kỹ năng khác nhé!';
+                    } else if (percentage < 80) {
+                        fClass = 'good';
+                        fIcon = '👍';
+                        fText = '**Tốt** — Bạn đã có nhận thức tốt về việc dùng AI. Tiếp tục phát huy!';
+                    } else {
+                        fClass = 'excellent';
+                        fIcon = '🎉';
+                        fText = '✨ **Xuất sắc!** — Bạn đang làm chủ AI một cách rất hiệu quả và có trách nhiệm!';
+                    }
+                }
+                feedbackMessage.className = `feedback-message ${fClass}`;
+                feedbackIcon.textContent = fIcon;
+                feedbackText.innerHTML = fText;
+
+                if (totalChecked === 0) {
+                    suggestionText.textContent = suggestions.default;
+                } else if (firstUncheckedSection) {
+                    suggestionText.textContent = suggestions[firstUncheckedSection] || "Hãy tiếp tục hoàn thành các mục còn lại.";
+                } else {
+                    suggestionText.textContent = "Tuyệt vời! Bạn đã hoàn thành tất cả. Hãy thử dạy người khác các kỹ năng này nhé!";
+                }
+                
+                if (Math.round(percentage) === 100) {
+                    rewardBox.style.display = 'block';
+                } else {
+                    rewardBox.style.display = 'none';
+                }
+            }
+            
+            // === HÀM XUẤT PDF ĐÃ SỬA LỖI HOÀN CHỈNH ===
+            function exportPDF() {
+                // Chọn .page-container thay vì body để có khoảng trắng đẹp hơn
+                const content = document.querySelector('.page-container'); 
+                const originalButtonText = exportButton.textContent;
+                exportButton.textContent = 'Đang tạo PDF...';
+                exportButton.disabled = true;
+
+                // 1. Thêm lớp CSS để "dọn dẹp"
+                document.body.classList.add('is-exporting-pdf');
+
+                html2canvas(content, { 
+                    scale: 2, // Tăng chất lượng ảnh
+                    scrollY: -window.scrollY, // Đảm bảo chụp đúng vị trí cuộn
+                    useCORS: true 
+                }).then(canvas => {
+                    // 2. Xóa lớp CSS ngay sau khi chụp xong
+                    document.body.classList.remove('is-exporting-pdf');
+
+                    const imgData = canvas.toDataURL('image/png');
+                    
+                    const pageHeight = 297; // A4 height in mm
+                    const pageWidth = 210;  // A4 width in mm
+                    
+                    // Tính toán tỷ lệ ảnh
+                    const imgWidth = pageWidth - 20; // Trừ lề 10mm mỗi bên
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    
+                    let heightLeft = imgHeight;
+                    let position = 10; // Bắt đầu với lề trên 10mm
+                    
+                    const pdf = new jsPDF('p', 'mm', 'a4'); 
+
+                    // Thêm trang đầu tiên
+                    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                    heightLeft -= (pageHeight - 20); // Trừ đi chiều cao có thể chứa (đã trừ lề)
+
+                    // Thêm các trang mới nếu nội dung dài
+                    while (heightLeft > 0) {
+                        position = -heightLeft + 10; // Dịch ảnh lên + lề trên
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                        heightLeft -= (pageHeight - 20);
+                    }
+                    
+                    pdf.save('ket-qua-checklist-ai.pdf');
+                    
+                    // 3. Khôi phục nút
+                    exportButton.textContent = originalButtonText;
+                    exportButton.disabled = false;
+                }).catch(err => {
+                    // 4. Nếu lỗi, cũng xóa lớp CSS và khôi phục nút
+                    console.error("Lỗi khi tạo PDF:", err);
+                    alert("Không thể tạo PDF. Vui lòng thử lại.");
+                    document.body.classList.remove('is-exporting-pdf');
+                    exportButton.textContent = originalButtonText;
+                    exportButton.disabled = false;
+                });
+            }
+            
+            // Hàm copy (Giữ nguyên)
+            function copyResults() {
+                 let copyText = `Kết quả: ${progressPercentage.textContent} (${progressCount.textContent}) - ${feedbackText.innerText}\n`;
+                 copyText += `Gợi ý: ${suggestionText.textContent}`;
+                 
+                 navigator.clipboard.writeText(copyText).then(() => {
+                     alert('Đã sao chép kết quả vào clipboard!');
+                 }, () => {
+                     alert('Sao chép thất bại.');
+                 });
+            }
+
+            // Gán sự kiện (Giữ nguyên)
+            form.addEventListener('change', updateResults);
+            
+            resetButton.addEventListener('click', () => {
+                if (confirm('Bạn có chắc muốn làm lại từ đầu?')) {
+                    form.reset();
+                    updateResults();
+                }
+            });
+            
+            copyButton.addEventListener('click', copyResults);
+            
+            exportButton.addEventListener('click', exportPDF);
+
+            // Cập nhật lần đầu (Giữ nguyên)
+            updateResults();
+        });
+    </script>
+
+</body>
+</html>
